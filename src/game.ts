@@ -88,14 +88,12 @@ export function tick(state: GameState, dt: number): GameState {
   return { base, gens: nextGens, bought: state.bought }
 }
 
-/** Máximo de progresso simulado (24h) — offline e retorno do background. */
-export const MAX_CATCH_UP_SECONDS = 60 * 60 * 24
-
 /** Passo da sincronia bit a bit (Euler estável em gaps longos). */
 export const CATCH_UP_STEP_SECONDS = 1
 
 /**
  * Avança o estado por `seconds` em passos pequenos (sincronia bit a bit).
+ * Sem teto: todo o tempo offline / fora de foco conta.
  * Usado no progresso offline e ao voltar do background / aba fora de foco.
  */
 export function advanceTime(
@@ -103,8 +101,8 @@ export function advanceTime(
   seconds: number,
   step = CATCH_UP_STEP_SECONDS,
 ): GameState {
-  let remaining = Math.min(Math.max(0, seconds), MAX_CATCH_UP_SECONDS)
-  if (remaining <= 0) return state
+  let remaining = Math.max(0, seconds)
+  if (remaining <= 0 || !Number.isFinite(remaining)) return state
 
   let next = state
   while (remaining > 0) {
