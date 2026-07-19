@@ -1,0 +1,37 @@
+---
+description: Números via break_eternity; nunca arredondar (só truncar na UI)
+alwaysApply: true
+---
+
+# Números: break_eternity + sem arredondamento
+
+## Fonte da verdade
+
+- Use **`break_eternity.js` (`Decimal`)** para saldo, geradores, custos, produção e save.
+- Não use `number` nativo para economia do jogo (exceto `dt` do frame loop e métricas de debug como FPS).
+- Helpers em `src/decimal.ts`: `D()`, `formatNumber()`, `forDisplay()`.
+
+## Sem arredondamento
+
+- **Estado/lógica**: nunca `Math.round` / `Decimal.round` / `toFixed` para alterar valores do jogo.
+- **Display**: só **truncar** casas (`trunc` + formatação própria). Não use `toStringWithDecimalPlaces` / `toFixed` da lib — eles arredondam.
+- Compras: `gte` + subtração exata; `clampMin(0)` só como proteção.
+
+## Artefato 399 vs 400
+
+- Ruído de precisão pode fazer `399.999…` truncar para `"399"` quando o valor efetivo é `400`.
+- Corrija **apenas na formatação** via `forDisplay` (epsilon no limiar de truncagem + renormalizar mantissa `10.xx`).
+- Nunca “consertar” isso mutando o `Decimal` salvo no estado.
+
+## Exemplos
+
+```ts
+// ❌ BAD
+value.toFixed(2)
+value.toStringWithDecimalPlaces(2)
+Math.round(n)
+
+// ✅ GOOD
+formatNumber(value) // trunca + corrige display
+state.base.plus(prod.times(dt))
+```
