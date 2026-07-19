@@ -1,8 +1,8 @@
 import { D, ZERO } from './decimal'
 import {
   GENERATOR_COUNT,
+  advanceTime,
   createInitialState,
-  tick,
   type GameState,
 } from './game'
 
@@ -91,13 +91,7 @@ export function loadGame(): GameState {
     }
 
     const elapsed = Math.max(0, (Date.now() - parsed.savedAt) / 1000)
-    const offline = Math.min(elapsed, 60 * 60 * 24)
-    const step = 1
-    for (let t = 0; t < offline; t += step) {
-      state = tick(state, Math.min(step, offline - t))
-    }
-
-    return state
+    return advanceTime(state, elapsed)
   } catch {
     return createInitialState()
   }

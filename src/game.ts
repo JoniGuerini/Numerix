@@ -88,6 +88,33 @@ export function tick(state: GameState, dt: number): GameState {
   return { base, gens: nextGens, bought: state.bought }
 }
 
+/** Máximo de progresso simulado (24h) — offline e retorno do background. */
+export const MAX_CATCH_UP_SECONDS = 60 * 60 * 24
+
+/** Passo da sincronia bit a bit (Euler estável em gaps longos). */
+export const CATCH_UP_STEP_SECONDS = 1
+
+/**
+ * Avança o estado por `seconds` em passos pequenos (sincronia bit a bit).
+ * Usado no progresso offline e ao voltar do background / aba fora de foco.
+ */
+export function advanceTime(
+  state: GameState,
+  seconds: number,
+  step = CATCH_UP_STEP_SECONDS,
+): GameState {
+  let remaining = Math.min(Math.max(0, seconds), MAX_CATCH_UP_SECONDS)
+  if (remaining <= 0) return state
+
+  let next = state
+  while (remaining > 0) {
+    const dt = Math.min(step, remaining)
+    next = tick(next, dt)
+    remaining -= dt
+  }
+  return next
+}
+
 export function buyGenerator(state: GameState, tierIndex: number): GameState {
   const cost = getCost(tierIndex, state.bought[tierIndex])
   if (state.base.lt(cost)) return state

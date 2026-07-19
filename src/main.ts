@@ -1,6 +1,7 @@
 import './style.css'
 import {
   GENERATORS,
+  advanceTime,
   buyGenerator,
   formatNumber,
   getCost,
@@ -10,6 +11,9 @@ import {
   type GameState,
 } from './game'
 import { loadGame, resetSave, saveGame } from './save'
+
+/** Cap do tick ao vivo — gaps maiores usam sincronia bit a bit. */
+const LIVE_DT_CAP = 0.1
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
@@ -129,6 +133,31 @@ window.addEventListener('beforeunload', () => {
   saveGame(state)
 })
 
+/** Salva ao sair de foco e, ao voltar, sincroniza o gap bit a bit na hora. */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    saveGame(state)
+    return
+  }
+
+  const now = performance.now()
+  if (lastTime > 0) {
+    const elapsed = Math.max(0, (now - lastTime) / 1000)
+    if (elapsed > LIVE_DT_CAP) {
+      state = advanceTime(state, elapsed)
+      lastTime = now
+      saveGame(state)
+      lastSaveAt = now
+      render()
+    }
+  }
+
+  // Reinicia o relógio do FPS para não distorcer a medição após o catch-up.
+  fpsFrames = 0
+  fpsWindowStart = now
+  fpsEl.textContent = 'FPS: --'
+})
+
 function updateFps(now: number) {
   fpsFrames += 1
   const elapsed = now - fpsWindowStart
@@ -152,9 +181,15 @@ function loop(now: number) {
     return
   }
 
-  const dt = Math.min(Math.max(0, (now - lastTime) / 1000), 0.1)
+  const elapsed = Math.max(0, (now - lastTime) / 1000)
   lastTime = now
-  state = tick(state, dt)
+
+  // Gap curto: tick ao vivo. Gap longo (fora de foco / throttle): bit a bit.
+  if (elapsed <= LIVE_DT_CAP) {
+    state = tick(state, elapsed)
+  } else {
+    state = advanceTime(state, elapsed)
+  }
 
   if (now - lastSaveAt >= 5000) {
     saveGame(state)
